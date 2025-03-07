@@ -2,17 +2,18 @@
   <div class="deck-builder">
     <h2>Liste des cartes Pokémon</h2>
 
-    <!-- Barre de recherche -->
+    <!-- Barre de recherche corrigée -->
     <n-input
-      v-model="searchQuery"
+      :value="searchQuery"
       placeholder="Rechercher un Pokémon..."
       clearable
       class="search-bar"
+      @update:value="updateSearchQuery"
     />
 
     <div class="card-container">
       <n-card
-        v-for="card in filteredCards"
+        v-for="card in filteredPokemons"
         :key="card.id"
         class="pokemon-card"
       >
@@ -45,8 +46,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
-const pokemons = ref([]) // Liste des cartes Pokémon
+const pokemons = ref([]) // Liste complète des cartes Pokémon
 const searchQuery = ref('') // Texte de recherche
+
+// Correction : updateSearchQuery() avec la bonne syntaxe pour NaiveUI
+const updateSearchQuery = (newValue) => {
+  searchQuery.value = newValue;
+  console.log("Mise à jour de searchQuery :", searchQuery.value);
+};
 
 // Récupération des cartes Pokémon depuis l’API
 const fetchPokemons = async () => {
@@ -54,40 +61,46 @@ const fetchPokemons = async () => {
     const response = await fetch('https://pokemon-api-seyrinian-production.up.railway.app/pokemon-cards')
     const data = await response.json()
     
-    console.log("Données reçues :", data) // Vérification des données API
+    console.log("Données reçues :", data)
 
     // Traitement des données pour éviter les erreurs
     pokemons.value = data.map(card => ({
       id: card.id,
-      name: card.name ? card.name : 'Inconnu', 
+      name: card.name ? card.name.toLowerCase() : 'inconnu',
       lifePoints: card.lifePoints || 0,
-      type: card.type ? card.type.name : 'Inconnu', 
-      attack: card.attack ? card.attack.name : 'Aucune', 
+      type: card.type ? card.type.name : 'Inconnu',
+      attack: card.attack ? card.attack.name : 'Aucune',
       attackDamage: card.attack ? card.attack.damages : 0,
       height: card.height || 0,
       weight: card.weight || 0,
-      imageUrl: card.imageUrl || 'https://via.placeholder.com/150' // Image par défaut si absente
-    }))
+      imageUrl: card.imageUrl || 'https://via.placeholder.com/150'
+    }));
 
-    console.log("Liste des Pokémon après traitement :", pokemons.value)
+    console.log("Liste des Pokémon après traitement :", pokemons.value);
   } catch (error) {
-    console.error("Erreur lors du chargement des cartes Pokémon :", error)
+    console.error("Erreur lors du chargement des cartes Pokémon :", error);
   }
-}
+};
 
-// Filtrer les cartes selon la recherche
-const filteredCards = computed(() => {
-  console.log("Filtrage en cours, recherche :", searchQuery.value)
+// Filtrage avec `computed()`
+const filteredPokemons = computed(() => {
+  console.log("Recherche actuelle :", searchQuery.value);
 
-  if (!searchQuery.value) return pokemons.value // Si la recherche est vide, afficher tous les Pokémon
+  if (!searchQuery.value || searchQuery.value.trim() === '') {
+    console.log("Aucune recherche active, affichage de tous les Pokémon");
+    return pokemons.value; // Si la recherche est vide, afficher tous les Pokémon
+  }
+
+  console.log("Filtrage avec :", searchQuery.value.toLowerCase());
 
   return pokemons.value.filter(card => {
-    return card.name.toLowerCase().includes(searchQuery.value.toLowerCase()) // Comparaison en minuscules
-  })
-})
+    console.log(`Comparaison : ${card.name} avec ${searchQuery.value.toLowerCase()}`);
+    return card.name.includes(searchQuery.value.toLowerCase()); // Filtrage insensible à la casse
+  });
+});
 
 // Charger les cartes au montage du composant
-onMounted(fetchPokemons)
+onMounted(fetchPokemons);
 </script>
 
 <style scoped>
