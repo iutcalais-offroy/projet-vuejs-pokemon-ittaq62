@@ -26,5 +26,4 @@ import HeaderMenu from './components/HeaderMenu.component.vue';
   margin-left: 3em;
   margin-right: 3em;
 }
-
 </style>
