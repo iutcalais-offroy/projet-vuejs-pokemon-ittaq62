@@ -163,6 +163,10 @@ onMounted(fetchPokemons);
 .type-water { background-color: #6890f0; color: white; }
 .type-electric { background-color: #f8d030; color: black; }
 .type-normal { background-color: #a8a878; color: white; }
+.type-bug { background-color: #ab2; color: white; }
+.type-poison { background-color: rgb(138, 44, 130); color: white; }
+.type-ground { background-color: #db5; color: white; }
+
 
 /* Détails du Pokémon */
 .pokemon-details {
