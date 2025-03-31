@@ -1,43 +1,63 @@
 <template>
   <div class="deck-builder">
+    <!-- Section du deck -->
+    <div class="deck">
+      <h3>Deck ({{ deck.length }} cartes)</h3>
+      <div class="deck-controls">
+        <n-input
+          :value="deckName"
+          placeholder="Nom du deck..."
+          class="deck-name-input"
+          @update:value="updateDeckName"
+        />
+        <n-button type="success" @click="saveDeck">Sauvegarder</n-button>
+      </div>
+      <div class="deck-container">
+        <n-card
+          v-for="card in deck"
+          :key="card.id"
+          class="pokemon-card"
+          @click="removeFromDeck(card)"
+        >
+          <img :src="card.imageUrl" alt="Image Pokémon" class="card-image"/>
+          <div class="pokemon-info">
+            <h3 class="pokemon-name">{{ card.name }}</h3>
+            <span class="pokemon-hp">PV {{ card.lifePoints }}</span>
+          </div>
+          <n-tag :class="'type-' + card.type.toLowerCase()">{{ card.type }}</n-tag>
+          <p class="pokemon-details">Taille : {{ card.height }}m | Poids : {{ card.weight }}kg</p>
+          <p class="pokemon-attack"><strong>{{ card.attack }}</strong> <span class="attack-damage">{{ card.attackDamage }} PV</span></p>
+        </n-card>
+      </div>
+    </div>
+
     <h2>Liste des cartes Pokémon</h2>
 
-    <!-- Barre de recherche corrigée -->
+    <!-- Barre de recherche -->
     <n-input
-      :value="searchQuery"
-      placeholder="Rechercher un Pokémon..."
+      v-model="searchQuery"
+      placeholder="Rechercher une carte..."
       clearable
       class="search-bar"
       @update:value="updateSearchQuery"
     />
 
+    <!-- Collection de cartes Pokémon -->
     <div class="card-container">
       <n-card
         v-for="card in filteredPokemons"
         :key="card.id"
         class="pokemon-card"
+        @click="addToDeck(card)"
       >
-        <!-- Image du Pokémon -->
         <img :src="card.imageUrl" alt="Image Pokémon" class="card-image"/>
-
-        <!-- Nom et PV -->
         <div class="pokemon-info">
           <h3 class="pokemon-name">{{ card.name }}</h3>
           <span class="pokemon-hp">PV {{ card.lifePoints }}</span>
         </div>
-
-        <!-- Type du Pokémon -->
         <n-tag :class="'type-' + card.type.toLowerCase()">{{ card.type }}</n-tag>
-
-        <!-- Taille & Poids -->
-        <p class="pokemon-details">
-          Taille : {{ card.height }}m | Poids : {{ card.weight }}kg
-        </p>
-
-        <!-- Attaque -->
-        <p class="pokemon-attack">
-          <strong>{{ card.attack }}</strong> <span class="attack-damage">{{ card.attackDamage }} PV</span>
-        </p>
+        <p class="pokemon-details">Taille : {{ card.height }}m | Poids : {{ card.weight }}kg</p>
+        <p class="pokemon-attack"><strong>{{ card.attack }}</strong> <span class="attack-damage">{{ card.attackDamage }} PV</span></p>
       </n-card>
     </div>
   </div>
@@ -45,25 +65,31 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
 const pokemons = ref([]) // Liste complète des cartes Pokémon
 const searchQuery = ref('') // Texte de recherche
+const deck = ref([]) // Deck temporaire
+const deckName = ref('') // Nom du deck
+const router = useRouter()
 
-// Correction : updateSearchQuery() avec la bonne syntaxe pour NaiveUI
+// Mise à jour de la recherche
 const updateSearchQuery = (newValue) => {
   searchQuery.value = newValue;
-  console.log("Mise à jour de searchQuery :", searchQuery.value);
 };
 
-// Récupération des cartes Pokémon depuis l’API
+// Mise à jour du nom du deck
+const updateDeckName = (newValue) => {
+  deckName.value = newValue;
+  console.log("Mise à jour du nom du deck:", deckName.value);
+};
+
+// Récupération des cartes Pokémon
 const fetchPokemons = async () => {
   try {
     const response = await fetch('https://pokemon-api-seyrinian-production.up.railway.app/pokemon-cards')
     const data = await response.json()
-    
-    console.log("Données reçues :", data)
 
-    // Traitement des données pour éviter les erreurs
     pokemons.value = data.map(card => ({
       id: card.id,
       name: card.name ? card.name.toLowerCase() : 'inconnu',
@@ -75,40 +101,102 @@ const fetchPokemons = async () => {
       weight: card.weight || 0,
       imageUrl: card.imageUrl || 'https://via.placeholder.com/150'
     }));
-
-    console.log("Liste des Pokémon après traitement :", pokemons.value);
   } catch (error) {
     console.error("Erreur lors du chargement des cartes Pokémon :", error);
   }
 };
 
-// Filtrage avec `computed()`
+// Filtrage des Pokémon avec `computed`
 const filteredPokemons = computed(() => {
-  console.log("Recherche actuelle :", searchQuery.value);
-
   if (!searchQuery.value || searchQuery.value.trim() === '') {
-    console.log("Aucune recherche active, affichage de tous les Pokémon");
-    return pokemons.value; // Si la recherche est vide, afficher tous les Pokémon
+    return pokemons.value;
   }
-
-  console.log("Filtrage avec :", searchQuery.value.toLowerCase());
-
-  return pokemons.value.filter(card => {
-    console.log(`Comparaison : ${card.name} avec ${searchQuery.value.toLowerCase()}`);
-    return card.name.includes(searchQuery.value.toLowerCase()); // Filtrage insensible à la casse
-  });
+  return pokemons.value.filter(card => card.name.includes(searchQuery.value.toLowerCase()));
 });
 
-// Charger les cartes au montage du composant
+// Ajouter une carte au deck
+const addToDeck = (card) => {
+  if (!deck.value.find(p => p.id === card.id)) {
+    deck.value.push(card);
+  }
+};
+
+// Retirer une carte du deck
+const removeFromDeck = (card) => {
+  deck.value = deck.value.filter(p => p.id !== card.id);
+};
+
+// Sauvegarde du deck via API
+const saveDeck = async () => {
+  console.log("Nom du deck:", deckName.value);
+  console.log("Cartes dans le deck:", deck.value);
+
+  if (!deckName.value || deckName.value.trim() === '') {
+    alert("Veuillez donner un nom à votre deck.");
+    return;
+  }
+  if (deck.value.length === 0) {
+    alert("Votre deck est vide.");
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert("Erreur : Vous devez être connecté pour sauvegarder un deck.");
+    return;
+  }
+
+  const deckData = {
+    name: deckName.value,
+    cards: deck.value.map(card => card.id)
+  };
+
+  try {
+    console.log("Envoi des données à l'API :", deckData);
+
+    const response = await fetch('https://pokemon-api-seyrinian-production.up.railway.app/decks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(deckData)
+    });
+
+    const responseData = await response.json();
+    console.log("Réponse API :", responseData);
+
+    if (response.ok) {
+      alert("Deck sauvegardé avec succès !");
+      deck.value = [];
+      deckName.value = '';
+      router.push('/mes-decks'); // Redirection vers la page des decks
+    } else {
+      alert(responseData.message || "Erreur lors de la sauvegarde du deck.");
+    }
+  } catch (error) {
+    console.error("Erreur réseau lors de la sauvegarde :", error);
+    alert("Erreur réseau lors de la sauvegarde.");
+  }
+};
+
+// Charger les cartes Pokémon au montage du composant
 onMounted(fetchPokemons);
 </script>
 
 <style scoped>
-/* Conteneur principal */
 .deck-builder {
   max-width: 1100px;
   margin: auto;
   text-align: center;
+}
+
+/* Deck en haut */
+.deck {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 10px;
 }
 
 /* Barre de recherche */
@@ -118,14 +206,14 @@ onMounted(fetchPokemons);
 }
 
 /* Conteneur des cartes */
-.card-container {
+.card-container, .deck-container {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   justify-content: center;
 }
 
-/* Style de chaque carte */
+/* Cartes du deck identiques aux cartes de la collection */
 .pokemon-card {
   width: 250px;
   text-align: center;
@@ -141,49 +229,34 @@ onMounted(fetchPokemons);
   max-height: 150px;
 }
 
-/* Informations du Pokémon */
-.pokemon-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 18px;
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-/* Style des PV */
-.pokemon-hp {
-  color: red;
-  font-weight: bold;
-}
-
-/* Type de Pokémon */
+/* Type de Pokémon (couleurs restaurées) */
 .type-grass { background-color: #78c850; color: white; }
 .type-fire { background-color: #f08030; color: white; }
 .type-water { background-color: #6890f0; color: white; }
 .type-electric { background-color: #f8d030; color: black; }
 .type-normal { background-color: #a8a878; color: white; }
-.type-bug { background-color: #ab2; color: white; }
-.type-poison { background-color: rgb(138, 44, 130); color: white; }
-.type-ground { background-color: #db5; color: white; }
+.type-bug { background-color: #a8b820; color: white; }
+.type-poison { background-color: #a040a0; color: white; }
+.type-ground { background-color: #e0c068; color: black; }
+.type-flying { background-color: #a890f0; color: black; }
+.type-psychic { background-color: #f85888; color: white; }
+.type-rock { background-color: #b8a038; color: white; }
+.type-ghost { background-color: #705898; color: white; }
+.type-dark { background-color: #705848; color: white; }
+.type-dragon { background-color: #7038f8; color: white; }
+.type-steel { background-color: #b8b8d0; color: black; }
+.type-fairy { background-color: #ee99ac; color: black; }
 
-
-/* Détails du Pokémon */
-.pokemon-details {
-  font-size: 14px;
-  color: gray;
+/* Nom du deck + bouton */
+.deck-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 15px;
 }
 
-/* Attaque */
-.pokemon-attack {
-  font-size: 16px;
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-/* Dégâts de l'attaque */
-.attack-damage {
-  color: red;
-  font-weight: bold;
+/* Input pour le nom du deck */
+.deck-name-input {
+  width: 200px;
 }
 </style>

@@ -1,111 +1,45 @@
 <template>
-  <div class="login-container">
-    <n-card title="Connexion">
-      <n-form @submit.prevent="login">
-        <n-form-item label="Email">
-          <n-input v-model="loginData.email" type="email" required />
-        </n-form-item>
-        <n-form-item label="Mot de passe">
-          <n-input v-model="loginData.password" type="password" required />
-        </n-form-item>
-        <n-button type="primary" native-type="submit" @click="login">Se connecter</n-button>
-      </n-form>
-    </n-card>
-
-    <n-card title="Inscription">
-      <n-form @submit.prevent="register">
-        <n-form-item label="Email">
-          <n-input v-model="registerData.email" type="email" required />
-        </n-form-item>
-        <n-form-item label="Mot de passe">
-          <n-input v-model="registerData.password" type="password" required />
-        </n-form-item>
-        <n-button type="success" native-type="submit" @click="register">S'inscrire</n-button>
-      </n-form>
-    </n-card>
-  </div>
+  <n-card title="Connexion" style="max-width: 400px; margin: auto;">
+    <n-form @submit.prevent="handleLogin">
+      <n-form-item label="Email">
+        <n-input v-model="loginData.email" type="email" placeholder="Entrez votre email" />
+      </n-form-item>
+      <n-form-item label="Mot de passe">
+        <n-input v-model="loginData.password" type="password" placeholder="Entrez votre mot de passe" />
+      </n-form-item>
+      <n-button type="primary" block @click="handleLogin">Se connecter</n-button>
+    </n-form>
+  </n-card>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useMessage } from 'naive-ui';
 
-const router = useRouter()
+const router = useRouter();
+const message = useMessage();
 
-// Données pour le formulaire de connexion
-const loginData = ref({
-  email: '',
-  password: ''
-})
+const loginData = ref({ email: '', password: '' });
 
-// Données pour le formulaire d'inscription
-const registerData = ref({
-  email: '',
-  password: ''
-})
-
-// Fonction de connexion
-const login = async () => {
-  console.log("Tentative de connexion avec :", loginData.value)
+async function handleLogin() {
   try {
     const response = await fetch('https://pokemon-api-seyrinian-production.up.railway.app/users/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(loginData.value)
-    })
-    
-    console.log("Réponse reçue :", response)
-    const data = await response.json()
-    
+    });
+    const result = await response.json();
     if (response.ok) {
-      console.log("Connexion réussie :", data)
-      localStorage.setItem('token', data.token) // Stocke le token
-      localStorage.setItem('userId', data.user.id) // Stocke l'ID utilisateur
-      router.push('/deck-builder') // Redirection après connexion réussie
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('userId', result.user.id);
+      message.success('Connexion réussie !');
+      router.push('/deck-builder');
     } else {
-      console.error("Erreur de connexion :", data.message)
-      alert(data.message || 'Erreur lors de la connexion')
+      message.error(result.message || 'Erreur de connexion');
     }
   } catch (error) {
-    console.error("Erreur réseau :", error)
-    alert('Erreur réseau')
-  }
-}
-
-// Fonction d'inscription
-const register = async () => {
-  console.log("Tentative d'inscription avec :", registerData.value)
-  try {
-    const response = await fetch('https://pokemon-api-seyrinian-production.up.railway.app/users', { // Endpoint correct pour créer un utilisateur
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(registerData.value)
-    })
-
-    console.log("Réponse reçue :", response)
-    const data = await response.json()
-
-    if (response.ok) {
-      console.log("Inscription réussie :", data)
-      alert('Inscription réussie, vous pouvez vous connecter.')
-      registerData.value = { email: '', password: '' } // Réinitialisation du formulaire
-    } else {
-      console.error("Erreur d'inscription :", data.message)
-      alert(data.message || 'Erreur lors de l’inscription')
-    }
-  } catch (error) {
-    console.error("Erreur réseau :", error)
-    alert('Erreur réseau')
+    message.error('Problème de connexion au serveur');
   }
 }
 </script>
-
-<style scoped>
-.login-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 400px;
-  margin: auto;
-}
-</style>
